@@ -4,7 +4,7 @@ from __future__ import annotations
 import asyncio
 import os
 from typing import Any, AsyncIterator
-from unittest.mock import patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -505,16 +505,20 @@ class TestHookEngine:
 # ---------------------------------------------------------------------------
 
 class TestAgentHookIntegration:
-    """验证 pre_tool_use 拒绝会导致工具调用被跳过。"""
+    """三条工具执行路径均遵守 Hook，不启动真实 Shell。"""
 
     @pytest.mark.asyncio
-    @pytest.mark.skipif(os.name == "nt", reason="rm 命令在 Windows 上不可用")
-    async def test_pre_tool_use_reject_skips_tool(self):
-        from forgecli.agent import Agent, ToolResultEvent
+    @pytest.mark.parametrize("execution_mode", ["streaming", "deferred", "noninteractive"])
+    @pytest.mark.parametrize("reject", [True, False])
+    async def test_tool_hooks_guard_execution(self, execution_mode, reject, tmp_path):
+        from forgecli.agent import Agent, PermissionRequest, PermissionResponse
         from forgecli.client import LLMClient
         from forgecli.conversation import ConversationManager
+        from forgecli.hooks.executors import execute_action
+        from forgecli.permissions.checker import Decision, PermissionChecker
+        from forgecli.permissions.modes import PermissionMode
         from forgecli.tools import create_default_registry
-        from forgecli.tools.base import StreamEnd, StreamEvent, TextDelta, ToolCallComplete
+        from forgecli.tools.base import StreamEnd, TextDelta, ToolCallComplete, ToolResult
 
         class MockClient(LLMClient):
             def __init__(self):
@@ -526,40 +530,82 @@ class TestAgentHookIntegration:
                     yield ToolCallComplete(
                         tool_id="t1",
                         tool_name="Bash",
-                        arguments={"command": "rm -rf /"},
+                        arguments={"command": "echo blocked"},
                     )
                     yield StreamEnd(stop_reason="tool_use", input_tokens=10, output_tokens=5)
                 else:
                     yield TextDelta(text="I understand, I won't do that.")
                     yield StreamEnd(stop_reason="end_turn", input_tokens=10, output_tokens=5)
 
-        hook = Hook(
-            id="block-rm",
+        pre_hook = Hook(
+            id="guard-command",
             event="pre_tool_use",
-            action=Action(type="command", command="echo dangerous command blocked"),
-            condition=parse_condition('tool == "Bash" && args.command =~ /rm\\s+-rf/'),
-            reject=True,
+            action=Action(type="prompt", message="pre"),
+            condition=parse_condition(r'tool == "Bash" && args.command =~ /echo\s+blocked/'),
+            reject=reject,
         )
-        engine = HookEngine([hook])
+        post_hook = Hook(
+            id="record-command",
+            event="post_tool_use",
+            action=Action(type="prompt", message="post"),
+            condition=parse_condition('tool == "Bash"'),
+        )
+        engine = HookEngine([pre_hook, post_hook])
 
         client = MockClient()
         registry = create_default_registry()
+        bash = registry.get("Bash")
+        assert bash is not None
+        call_order = []
+
+        async def simulate_tool(params):
+            call_order.append("tool")
+            return ToolResult(output="simulated execution")
+
+        async def record_hook(action, ctx):
+            call_order.append(action.message)
+            return await execute_action(action, ctx)
+
+        checker = None
+        if execution_mode == "deferred":
+            checker = Mock(spec=PermissionChecker)
+            checker.mode = PermissionMode.DEFAULT
+            checker.check.return_value = Decision(effect="ask", reason="test approval")
+
         conv = ConversationManager()
-        conv.add_user_message("delete everything")
+        conv.add_user_message("run the test command")
 
         agent = Agent(
             client=client,
             registry=registry,
             protocol="anthropic",
+            work_dir=str(tmp_path),
+            permission_checker=checker,
             hook_engine=engine,
         )
 
-        events = []
-        async for event in agent.run(conv):
-            events.append(event)
+        permission_requests = []
+        with (
+            patch.object(bash, "execute", new_callable=AsyncMock, side_effect=simulate_tool) as tool_execute,
+            patch("forgecli.hooks.engine.execute_action", side_effect=record_hook),
+        ):
+            if execution_mode == "noninteractive":
+                await agent.run_to_completion("", conversation=conv)
+            else:
+                async for event in agent.run(conv):
+                    if isinstance(event, PermissionRequest):
+                        permission_requests.append(event)
+                        event.future.set_result(PermissionResponse.ALLOW)
 
-        tool_results = [e for e in events if isinstance(e, ToolResultEvent)]
-        assert len(tool_results) >= 1
-        rejected = tool_results[0]
-        assert rejected.is_error is True
-        assert "Hook rejected" in rejected.output
+        tool_results = [result for message in conv.history for result in message.tool_results]
+        assert len(tool_results) == 1
+        assert tool_results[0].is_error is reject
+        assert len(permission_requests) == int(execution_mode == "deferred" and not reject)
+        if reject:
+            assert "Hook rejected" in tool_results[0].content
+            tool_execute.assert_not_awaited()
+            assert call_order == ["pre"]
+        else:
+            assert tool_results[0].content == "simulated execution"
+            tool_execute.assert_awaited_once()
+            assert call_order == ["pre", "tool", "post"]
