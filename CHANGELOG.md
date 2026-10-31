@@ -25,6 +25,9 @@
 
 ### Project maintenance
 
+- Run push-triggered CI only on main while retaining pull request and manual checks to avoid duplicate branch builds.
+- Group minor and patch Dependabot version updates separately for Python and GitHub Actions.
+- Keep MCP on the supported 1.x SDK and defer automatic major upgrades pending a dedicated migration; 1.x fixes remain eligible.
 - Consistent ForgeCLI command, package, configuration and environment names.
 - Windows, Linux and macOS CI configuration with locked dependencies.
 - Distribution content checks and installation checks in an isolated environment.
