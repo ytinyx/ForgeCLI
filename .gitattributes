@@ -1,0 +1,2 @@
+# Preserve existing line endings while checking whitespace in LF and CRLF files.
+* whitespace=trailing-space,space-before-tab,cr-at-eol
