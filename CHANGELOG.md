@@ -18,6 +18,7 @@
 - Escaped browser rendering for model output and removal of external runtime scripts.
 - Explicit denial of approval requests in non-interactive mode unless bypass is selected.
 - Process-tree cleanup when shell commands time out or are cancelled.
+- Consistent pre-tool rejection and post-tool hooks across streaming, interactive and non-interactive execution.
 - Environment-based credentials and opt-in MCP services in the example configuration.
 - Disabled automatic MCP HTTP redirects to prevent forwarding credentials to another origin.
 - Updated locked dependencies to address reported security advisories.
