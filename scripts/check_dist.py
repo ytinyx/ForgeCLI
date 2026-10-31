@@ -58,6 +58,17 @@ def main() -> None:
     version = project["version"]
     wheel = ROOT / "dist" / f"forgecli-{version}-py3-none-any.whl"
     source = ROOT / "dist" / f"forgecli-{version}.tar.gz"
+    license_text = (ROOT / "LICENSE").read_text(encoding="utf-8")
+
+    def check_license_metadata(metadata) -> None:
+        if metadata["License-Expression"] != project["license"]:
+            raise RuntimeError("Package license expression does not match pyproject.toml")
+        if "LICENSE" not in metadata.get_all("License-File", []):
+            raise RuntimeError("Package metadata is missing the LICENSE reference")
+
+    def check_license_text(data: bytes) -> None:
+        if data.decode("utf-8").replace("\r\n", "\n") != license_text:
+            raise RuntimeError("Packaged license text does not match the project LICENSE")
 
     with zipfile.ZipFile(wheel) as archive:
         names = set(archive.namelist())
@@ -67,6 +78,8 @@ def main() -> None:
             raise RuntimeError("Wheel metadata does not match pyproject.toml")
         if metadata["Description-Content-Type"] != "text/markdown":
             raise RuntimeError("Wheel metadata is missing the Markdown README")
+        check_license_metadata(metadata)
+        check_license_text(archive.read(f"forgecli-{version}.dist-info/licenses/LICENSE"))
 
     with tarfile.open(source, "r:gz") as archive:
         prefix = f"forgecli-{version}/"
@@ -80,10 +93,16 @@ def main() -> None:
         check_paths(names)
         required = {
             "README.md", "pyproject.toml", "uv.lock", "tests/conftest.py",
-            ".forgecli/config.yaml.example",
+            ".forgecli/config.yaml.example", "LICENSE",
         }
         if required - names:
             raise RuntimeError(f"Missing source files: {sorted(required - names)}")
+        license_file = archive.extractfile(prefix + "LICENSE")
+        package_metadata = archive.extractfile(prefix + "PKG-INFO")
+        if license_file is None or package_metadata is None:
+            raise RuntimeError("Source archive is missing license or package metadata")
+        check_license_text(license_file.read())
+        check_license_metadata(BytesParser().parsebytes(package_metadata.read()))
 
     # Use locked runtime dependencies, then install the wheel without the source
     # tree on sys.path. This catches missing data files and broken console scripts.

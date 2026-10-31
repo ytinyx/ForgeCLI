@@ -28,5 +28,6 @@
 - Windows, Linux and macOS CI configuration with locked dependencies.
 - Distribution content checks and installation checks in an isolated environment.
 - Contribution instructions, security reporting contact and dependency update automation.
+- MIT license text, SPDX package metadata and license inclusion checks for release archives.
 
 Version 1.0.0 is the current package version. A public release date will be recorded when a release is published.

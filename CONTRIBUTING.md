@@ -17,4 +17,4 @@ uv run --locked python scripts/check_dist.py
 
 提交前运行 `git diff --check`、`git diff --stat` 和 `git status --short`，检查即将提交的文件。不要提交本地配置、API 密钥、会话、日志或生成的安装包。`.gitignore` 不会移除已经被跟踪的文件；发现泄露时先撤销凭据，再处理历史。
 
-发布安装包前确定项目许可证。`scripts/check_dist.py` 检查归档中的资源和本地状态文件，再在独立环境用锁定依赖验证命令入口与模块入口。源码包通过明确的路径列表选择内容，配置方式见 [Hatch 构建文档](https://hatch.pypa.io/latest/config/build/)。
+发布安装包时保留根目录的 MIT 许可证。`scripts/check_dist.py` 检查归档中的资源、许可证和本地状态文件，再在独立环境用锁定依赖验证命令入口与模块入口。源码包通过明确的路径列表选择内容，配置方式见 [Hatch 构建文档](https://hatch.pypa.io/latest/config/build/)。

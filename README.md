@@ -103,3 +103,7 @@ GitHub Actions 已配置 Windows / Linux 的 Python 3.11、3.14，以及 macOS �
 ## 维护者
 
 [ytinyx](https://github.com/ytinyx) · [ytiny163@163.com](mailto:ytiny163@163.com)
+
+## 许可证
+
+采用 [MIT License](LICENSE)。分发时请保留版权声明与许可文本；依赖组件适用其各自的许可证。
