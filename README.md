@@ -2,6 +2,8 @@
 
 **终端里的 AI 编程工作台。**
 
+ForgeCLI 由 [ytinyx](https://github.com/ytinyx) 维护。
+
 在项目目录中阅读代码、规划修改、编辑文件和运行命令。ForgeCLI 将模型对话、工具执行、权限审批与任务协作放在同一个工作台中，支持 Anthropic、OpenAI 和兼容接口。
 
 基于 Python 与 Textual 构建，提供终端界面、本机浏览器界面和脚本调用入口。
@@ -106,4 +108,6 @@ GitHub Actions 已配置 Windows / Linux 的 Python 3.11、3.14，以及 macOS �
 
 ## 许可证
 
-采用 [MIT License](LICENSE)。分发时请保留版权声明与许可文本；依赖组件适用其各自的许可证。
+采用 [MIT License](LICENSE)。分发时请保留版权声明与许可文本。
+
+外部工具和依赖的来源、用途与许可证单独列于 [第三方组件说明](THIRD_PARTY_NOTICES.md)。

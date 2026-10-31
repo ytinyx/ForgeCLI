@@ -30,7 +30,7 @@ only-include = [
     "forgecli", "tests", "scripts", ".github",
     ".forgecli/config.yaml.example", ".gitignore", ".gitattributes",
     "pyproject.toml", "uv.lock", "README.md", "CHANGELOG.md", "FORGECLI.md",
-    "CONTRIBUTING.md", "SECURITY.md", "LICENSE",
+    "CONTRIBUTING.md", "SECURITY.md", "LICENSE", "THIRD_PARTY_NOTICES.md",
 ]
 
 [build-system]
